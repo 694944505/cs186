@@ -87,7 +87,13 @@ public class BNLJOperator extends JoinOperator {
          * Make sure you pass in the correct schema to this method.
          */
         private void fetchNextLeftBlock() {
-            // TODO(proj3_part1): implement
+            leftBlockIterator = getBlockIterator(leftSourceIterator, getLeftSource().getSchema(), numBuffers - 2);
+            if (leftBlockIterator.hasNext()) {
+                leftBlockIterator.markNext();
+                leftRecord = leftBlockIterator.next();
+            } else {
+                leftRecord = null;
+            }
         }
 
         /**
@@ -102,7 +108,8 @@ public class BNLJOperator extends JoinOperator {
          * Make sure you pass in the correct schema to this method.
          */
         private void fetchNextRightPage() {
-            // TODO(proj3_part1): implement
+            rightPageIterator = getBlockIterator(rightSourceIterator, getRightSource().getSchema(), 1);
+            rightPageIterator.markNext();
         }
 
         /**
@@ -114,7 +121,29 @@ public class BNLJOperator extends JoinOperator {
          * of JoinOperator).
          */
         private Record fetchNextRecord() {
-            // TODO(proj3_part1): implement
+
+            while (leftRecord != null) {
+                while (rightPageIterator.hasNext()) {
+                    Record rightRecord = rightPageIterator.next();
+                    if (compare(leftRecord, rightRecord) == 0) {
+                        return leftRecord.concat(rightRecord);
+                    }
+                }
+                if(leftBlockIterator.hasNext()) {
+                    leftRecord = leftBlockIterator.next();
+                    rightPageIterator.reset();
+                } else {
+                    leftBlockIterator.reset();
+                    leftRecord = leftBlockIterator.next();
+                    fetchNextRightPage();
+                    if (!rightPageIterator.hasNext()) {
+                        rightSourceIterator.reset();
+                        fetchNextRightPage();
+                        fetchNextLeftBlock();
+                    }
+                }
+                
+            }
             return null;
         }
 

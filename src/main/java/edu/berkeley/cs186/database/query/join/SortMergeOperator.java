@@ -139,8 +139,53 @@ public class SortMergeOperator extends JoinOperator {
          * or null if there are no more records to join.
          */
         private Record fetchNextRecord() {
-            // TODO(proj3_part1): implement
-            return null;
+            if(leftRecord == null || rightRecord == null) return null;
+            while(!marked) {
+                while(compare(leftRecord,rightRecord)<0) {
+                    if (leftIterator.hasNext()) {
+                        leftRecord = leftIterator.next();
+                    } else {
+                        return null;
+                    }
+                }
+                while(compare(leftRecord,rightRecord)>0) {
+                    if (rightIterator.hasNext()) { 
+                        rightRecord = rightIterator.next();
+                    } else {
+                        return null;
+                    }
+                }
+                if (compare(leftRecord,rightRecord)==0) {
+                    rightIterator.markPrev();
+                    marked = true;
+                }
+            }
+            Record returnRecord = leftRecord.concat(rightRecord);
+            
+            if (rightIterator.hasNext()) {
+                rightRecord = rightIterator.next(); 
+                if (compare(leftRecord,rightRecord)!=0) {
+                    marked = false;
+                    rightIterator.reset();
+                    rightRecord = rightIterator.next();
+                    if (leftIterator.hasNext()) { 
+                        leftRecord = leftIterator.next();
+                    } else {
+                        leftRecord = null;
+                    }
+                }
+            } else {
+                marked = false;
+                rightIterator.reset();
+                rightRecord = rightIterator.next();
+                if (leftIterator.hasNext()) { 
+                    leftRecord = leftIterator.next();
+                } else {
+                    leftRecord = null;
+                }
+            }
+            return returnRecord;
+            
         }
 
         @Override

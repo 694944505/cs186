@@ -1,5 +1,9 @@
 package edu.berkeley.cs186.database.concurrency;
 
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+
 /**
  * Utility methods to track the relationships between different lock types.
  */
@@ -17,11 +21,58 @@ public enum LockType {
      * at the same time another transaction holds lock type B on the same
      * resource, the lock types are compatible.
      */
+    final static HashMap<LockType, HashSet<LockType>> compatibleLocks = new HashMap<LockType, HashSet<LockType>>() {{
+            put(LockType.S, new HashSet<LockType>() {{  add(LockType.S); 
+                                                        add(LockType.IS);
+                                                        add(LockType.NL);}});
+            put(LockType.X, new HashSet<LockType>() {{  add(LockType.NL);}});
+            put(LockType.IS, new HashSet<LockType>() {{ add(LockType.S);
+                                                        add(LockType.IS);
+                                                        add(LockType.IX);
+                                                        add(LockType.SIX);
+                                                        add(LockType.NL);}});
+            put(LockType.IX, new HashSet<LockType>() {{ add(LockType.IS); 
+                                                        add(LockType.IX);
+                                                        add(LockType.NL);}});
+            put(LockType.SIX, new HashSet<LockType>() {{add(LockType.IS);
+                                                        add(LockType.NL);}});
+            put(LockType.NL, new HashSet<LockType>() {{ add(LockType.S);
+                                                        add(LockType.X);
+                                                        add(LockType.IS);
+                                                        add(LockType.IX);
+                                                        add(LockType.SIX);
+                                                        add(LockType.NL);}});
+                    
+    }};
+    final static HashMap<LockType, HashSet<LockType>> substitutableLocks = new HashMap<LockType, HashSet<LockType>>() {{
+        put(LockType.S, new HashSet<LockType>() {{  add(LockType.S); 
+                                                    add(LockType.X);
+                                                    add(LockType.SIX);}});
+        put(LockType.X, new HashSet<LockType>() {{  add(LockType.X);}});
+        put(LockType.IS, new HashSet<LockType>() {{ add(LockType.S);
+                                                    add(LockType.X);
+                                                    add(LockType.IS);
+                                                    add(LockType.IX);
+                                                    add(LockType.SIX);}});
+        put(LockType.IX, new HashSet<LockType>() {{ add(LockType.X); 
+                                                    add(LockType.IX);
+                                                    add(LockType.SIX);}});
+        put(LockType.SIX, new HashSet<LockType>() {{add(LockType.SIX);
+                                                    add(LockType.X);}});
+        put(LockType.NL, new HashSet<LockType>() {{ add(LockType.S);
+                                                    add(LockType.X);
+                                                    add(LockType.IS);
+                                                    add(LockType.IX);
+                                                    add(LockType.SIX);
+                                                    add(LockType.NL);}});
+    }};
     public static boolean compatible(LockType a, LockType b) {
         if (a == null || b == null) {
             throw new NullPointerException("null lock type");
         }
-        // TODO(proj4_part1): implement
+        if(compatibleLocks.get(a).contains(b)) {
+            return true;
+        }
 
         return false;
     }
@@ -46,6 +97,21 @@ public enum LockType {
     }
 
     /**
+     * This method returns the lock combine of two locks.
+     * @param lockType1
+     * @param lockType2
+     * @return the lock combine of two locks.
+     */
+    public static LockType combine(LockType lockType1, LockType lockType2) {
+        if (substitutable(lockType1, lockType2)) {
+            return lockType1;
+        }
+        if (substitutable(lockType2, lockType1)) {
+            return lockType2;
+        }
+        return SIX;
+    }
+    /**
      * This method returns if parentLockType has permissions to grant a childLockType
      * on a child.
      */
@@ -53,7 +119,13 @@ public enum LockType {
         if (parentLockType == null || childLockType == null) {
             throw new NullPointerException("null lock type");
         }
-        // TODO(proj4_part1): implement
+        LockType testParentLock = parentLock(childLockType);
+        if (testParentLock == parentLockType) {
+            return true;
+        }
+        if (substitutable(parentLockType, testParentLock)) {
+            return true;
+        }
 
         return false;
     }
@@ -68,7 +140,9 @@ public enum LockType {
         if (required == null || substitute == null) {
             throw new NullPointerException("null lock type");
         }
-        // TODO(proj4_part1): implement
+        if(substitutableLocks.get(required).contains(substitute)) {
+            return true;
+        }
 
         return false;
     }

@@ -930,7 +930,8 @@ public class Database implements AutoCloseable {
         @Override
         public void close() {
             try {
-                // TODO(proj4_part2)
+                LockContext databasContext = lockManager.databaseContext();
+                databasContext.releaseAllLocks(getTransaction());
                 return;
             } catch (Exception e) {
                 // There's a chance an error message from your release phase

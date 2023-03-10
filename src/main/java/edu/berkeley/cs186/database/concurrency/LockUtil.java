@@ -1,5 +1,7 @@
 package edu.berkeley.cs186.database.concurrency;
 
+import java.util.ArrayList;
+
 import edu.berkeley.cs186.database.TransactionContext;
 
 /**
@@ -37,13 +39,48 @@ public class LockUtil {
         if (transaction == null || lockContext == null) return;
 
         // You may find these variables useful
-        LockContext parentContext = lockContext.parentContext();
+       // LockContext parentContext = lockContext.parentContext();
+        
         LockType effectiveLockType = lockContext.getEffectiveLockType(transaction);
         LockType explicitLockType = lockContext.getExplicitLockType(transaction);
 
         // TODO(proj4_part2): implement
+        if (LockType.substitutable(effectiveLockType, requestType)) return ;
+        if (effectiveLockType == LockType.IX && requestType == LockType.S) {
+            requestType = LockType.SIX;
+        }
+        ensureSufficientLockHeldOnAncestors(lockContext, requestType);
+        
         return;
     }
 
-    // TODO(proj4_part2) add any helper methods you want
+    /*
+     * Helper method to ensure that the current transaction has the appropriate
+     * locks on all ancestors of `lockContext`.
+     */
+    private static void ensureSufficientLockHeldOnAncestors(LockContext lockContext, LockType requestType) {
+        TransactionContext transaction = TransactionContext.getTransaction();
+        LockContext parentContext = lockContext;
+        LockType requestParentType = requestType;
+        ArrayList<LockContext> parentContexts = new ArrayList<LockContext>();
+        ArrayList<LockType> requestParentTypes = new ArrayList<LockType>();
+        while(parentContext != null && requestParentType != LockType.NL) {
+            LockType parentEffectiveLockType = parentContext.getEffectiveLockType(transaction);
+            if (!LockType.substitutable(parentEffectiveLockType, requestParentType)) {
+                parentContexts.add(parentContext);
+                requestParentTypes.add(LockType.combine(parentEffectiveLockType, requestParentType));
+            }
+            parentContext = parentContext.parentContext();
+            requestParentType = LockType.parentLock(requestParentType);
+        }
+        for (int i = parentContexts.size() - 1; i >= 0; i--) {
+            LockContext parent = parentContexts.get(i);
+            LockType request = requestParentTypes.get(i);
+            if (parent.getExplicitLockType(transaction) == LockType.NL) {
+                parent.acquire(transaction, request);
+            } else {
+                parent.promote(transaction, request); 
+            }
+        }
+    }
 }

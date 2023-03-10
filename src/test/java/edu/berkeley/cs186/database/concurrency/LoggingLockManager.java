@@ -124,6 +124,7 @@ public class LoggingLockManager extends LockManager {
     }
 
     void emit(String s) {
+        // System.out.println(s);
         long tid = Thread.currentThread().getId();
         if (suppressStatus && !s.startsWith("acquire") && !s.startsWith("promote") &&
                 !s.startsWith("release")) {
